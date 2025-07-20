@@ -3,9 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bench Warmers Ticker</title>
+  <title>The Bench Warmers Ticker</title>
   <style>
-    body { margin: 0; background: transparent; font-family: Arial, sans-serif; }
+    body {
+      margin: 0;
+      background: transparent;
+      font-family: Arial, sans-serif;
+    }
+
     .ticker-container {
       position: fixed;
       bottom: 0;
@@ -15,41 +20,62 @@
       background: linear-gradient(90deg, #000814, #001d3d, #000814);
       border-top: 3px solid #ffd60a;
       box-shadow: 0 -5px 20px rgba(255, 214, 10, 0.3);
-      display: flex;
-      align-items: center;
       overflow: hidden;
       z-index: 9999;
     }
+
     .ticker-header {
-      width: 300px;
-      height: 100%;
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 250px;
+      height: 120px;
       background: black;
       color: white;
       display: flex;
       flex-direction: column;
-      justify-content: center;
       align-items: center;
+      justify-content: center;
       font-weight: bold;
-      box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+      font-size: 20px;
+      box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
+      z-index: 1000;
     }
-    .brand-text { font-size: 22px; line-height: 28px; }
-    .live-sports-text { font-size: 16px; color: red; }
+
+    .brand-text {
+      font-size: 18px;
+      color: white;
+    }
+
+    .live-sports-text {
+      color: red;
+      font-size: 14px;
+    }
 
     .ticker-content {
-      white-space: nowrap;
+      margin-left: 250px;
       display: flex;
       align-items: center;
       height: 100%;
-      animation: scroll 100s linear infinite;
-      padding-left: 20px;
+      white-space: nowrap;
+      animation: scroll 35s linear infinite;
+      position: relative;
+      z-index: 1;
     }
+
+    @keyframes scroll {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+
     .ticker-item {
       display: inline-flex;
       align-items: center;
       margin-right: 50px;
       color: white;
-      font-size: 20px;
+      font-size: 18px;
     }
+
     .news-item.breaking {
       background: linear-gradient(135deg, #dc2626, #991b1b);
       padding: 4px 10px;
@@ -57,15 +83,17 @@
       font-weight: bold;
       animation: pulse 1.5s infinite;
     }
-    @keyframes scroll {
-      0% { transform: translateX(100%); }
-      100% { transform: translateX(-100%); }
-    }
+
     @keyframes pulse {
       0%, 100% { opacity: 1; transform: scale(1); }
       50% { opacity: 0.8; transform: scale(1.05); }
     }
-    .separator { color: #ffd60a; margin: 0 12px; font-size: 26px; }
+
+    .separator {
+      color: #ffd60a;
+      margin: 0 12px;
+      font-size: 26px;
+    }
   </style>
 </head>
 <body>
@@ -75,31 +103,70 @@
       <div class="live-sports-text">LIVE SPORTS</div>
     </div>
     <div class="ticker-content" id="tickerContent">
-      <div class="ticker-item"><span>Loading sports data...</span></div>
+      <div class="ticker-item"><span>Loading live sports data...</span></div>
     </div>
   </div>
 
   <script>
-    async function fetchData() {
-      const apiUrl = 'https://benchwarmers-api.vercel.app/api'; // update if needed
+    const API_KEY = '813745'; // Your SportsDB key
+
+    const sportsMap = {
+      NBA: 'Basketball',
+      MLB: 'Baseball',
+      NFL: 'American Football',
+      MLS: 'Soccer',
+      NCAAF: 'College Football',
+      NCAAB: 'College Basketball'
+    };
+
+    async function fetchSportEvents(sport) {
+      const date = new Date().toISOString().slice(0, 10);
+      const url = `https://www.thesportsdb.com/api/v1/json/${API_KEY}/eventsday.php?d=${date}&s=${sport}`;
       try {
-        const res = await fetch(apiUrl);
-        const { games, news } = await res.json();
-        const combined = [...games, ...news];
-        const html = combined.map(n => `
-          <div class="ticker-item">
-            ${n.type === 'score'
-              ? `<span>${n.emoji} ${n.team1} ${n.score1} - ${n.score2} ${n.team2} <span class="separator">|</span> ${n.status}</span>`
-              : `<div class="news-item ${n.breaking ? 'breaking' : ''}">${n.content}</div>`}
-          </div>
-        `).join('<span class="separator">•</span>');
-        document.getElementById("tickerContent").innerHTML = html;
+        const res = await fetch(url);
+        const data = await res.json();
+        return data.events || [];
       } catch {
-        document.getElementById("tickerContent").innerHTML = `<div class="ticker-item"><span>Feed offline</span></div>`;
+        return [];
       }
     }
-    fetchData();
-    setInterval(fetchData, 300000);
+
+    async function loadTicker() {
+      const tickerContent = document.getElementById("tickerContent");
+      let items = [];
+
+      const sportNames = Object.keys(sportsMap);
+      for (const sport of sportNames) {
+        const events = await fetchSportEvents(sport);
+        const emoji = sport === 'NFL' ? '🏈' :
+                      sport === 'NBA' ? '🏀' :
+                      sport === 'MLB' ? '⚾' :
+                      sport === 'MLS' ? '⚽' :
+                      '🏆';
+
+        for (const game of events) {
+          items.push(`
+            <div class="ticker-item">
+              <span>${emoji} ${sport}</span> • ${game.strHomeTeam} ${game.intHomeScore ?? ''} vs ${game.strAwayTeam} ${game.intAwayScore ?? ''} (${game.strTime ?? 'Scheduled'})
+            </div>
+          `);
+        }
+      }
+
+      if (items.length === 0) {
+        items.push(`
+          <div class="ticker-item">
+            <div class="news-item breaking">No games today – Follow The Bench Warmers for updates</div>
+          </div>
+        `);
+      }
+
+      tickerContent.innerHTML = items.join('<span class="separator">•</span>');
+    }
+
+    loadTicker();
+    setInterval(loadTicker, 300000); // refresh every 5 min
   </script>
 </body>
 </html>
+
