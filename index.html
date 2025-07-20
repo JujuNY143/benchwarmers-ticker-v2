@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bench Warmers Ticker</title>
+  <style>
+    body { margin: 0; background: transparent; font-family: Arial, sans-serif; }
+    .ticker-container {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 120px;
+      background: linear-gradient(90deg, #000814, #001d3d, #000814);
+      border-top: 3px solid #ffd60a;
+      box-shadow: 0 -5px 20px rgba(255, 214, 10, 0.3);
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+      z-index: 9999;
+    }
+    .ticker-header {
+      width: 300px;
+      height: 100%;
+      background: black;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+      box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+    }
+    .brand-text { font-size: 22px; line-height: 28px; }
+    .live-sports-text { font-size: 16px; color: red; }
+
+    .ticker-content {
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      height: 100%;
+      animation: scroll 100s linear infinite;
+      padding-left: 20px;
+    }
+    .ticker-item {
+      display: inline-flex;
+      align-items: center;
+      margin-right: 50px;
+      color: white;
+      font-size: 20px;
+    }
+    .news-item.breaking {
+      background: linear-gradient(135deg, #dc2626, #991b1b);
+      padding: 4px 10px;
+      border-radius: 10px;
+      font-weight: bold;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes scroll {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.05); }
+    }
+    .separator { color: #ffd60a; margin: 0 12px; font-size: 26px; }
+  </style>
+</head>
+<body>
+  <div class="ticker-container">
+    <div class="ticker-header">
+      <div class="brand-text">The Bench Warmers</div>
+      <div class="live-sports-text">LIVE SPORTS</div>
+    </div>
+    <div class="ticker-content" id="tickerContent">
+      <div class="ticker-item"><span>Loading sports data...</span></div>
+    </div>
+  </div>
+
+  <script>
+    async function fetchData() {
+      const apiUrl = 'https://benchwarmers-api.vercel.app/api'; // update if needed
+      try {
+        const res = await fetch(apiUrl);
+        const { games, news } = await res.json();
+        const combined = [...games, ...news];
+        const html = combined.map(n => `
+          <div class="ticker-item">
+            ${n.type === 'score'
+              ? `<span>${n.emoji} ${n.team1} ${n.score1} - ${n.score2} ${n.team2} <span class="separator">|</span> ${n.status}</span>`
+              : `<div class="news-item ${n.breaking ? 'breaking' : ''}">${n.content}</div>`}
+          </div>
+        `).join('<span class="separator">•</span>');
+        document.getElementById("tickerContent").innerHTML = html;
+      } catch {
+        document.getElementById("tickerContent").innerHTML = `<div class="ticker-item"><span>Feed offline</span></div>`;
+      }
+    }
+    fetchData();
+    setInterval(fetchData, 300000);
+  </script>
+</body>
+</html>
