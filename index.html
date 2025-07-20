@@ -28,24 +28,31 @@
       background: black;
       color: white;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      font-size: 22px;
       font-weight: bold;
       box-shadow: 2px 0 10px rgba(0,0,0,0.5);
-      flex-direction: column;
       z-index: 1001;
     }
 
-    .brand-text { color: white; display: block; font-size: 22px; }
-    .live-sports-text { color: red; font-size: 14px; }
+    .brand-text {
+      font-size: 22px;
+      color: white;
+      margin-bottom: 4px;
+    }
+
+    .live-sports-text {
+      color: red;
+      font-size: 14px;
+    }
 
     .ticker-content {
       white-space: nowrap;
       display: flex;
       align-items: center;
       height: 100%;
-      animation: scroll 65s linear infinite;
+      animation: scroll 120s linear infinite;
       padding-left: 20px;
       z-index: 1;
     }
@@ -76,7 +83,11 @@
       50% { opacity: 0.8; transform: scale(1.05); }
     }
 
-    .separator { color: #ffd60a; margin: 0 12px; font-size: 26px; }
+    .separator {
+      color: #ffd60a;
+      margin: 0 12px;
+      font-size: 26px;
+    }
   </style>
 </head>
 <body>
@@ -137,33 +148,5 @@
         { sport: 'football', league: 'nfl', label: 'NFL', emoji: '🏈' },
         { sport: 'baseball', league: 'mlb', label: 'MLB', emoji: '⚾' },
         { sport: 'soccer', league: 'usa.1', label: 'MLS', emoji: '⚽' },
-        { sport: 'football', league: 'college-football', label: 'NCAA F', emoji: '🎓' },
-        { sport: 'basketball', league: 'mens-college-basketball', label: 'NCAA MBB', emoji: '🎓' }
-      ];
+        { sport: 'football', l
 
-      let allItems = [];
-
-      for (const s of sports) {
-        const data = await fetchESPNData(s.sport, s.league);
-        const parsed = parseGames(data, s.label, s.emoji);
-        allItems = allItems.concat(parsed);
-      }
-
-      if (allItems.length === 0) {
-        allItems = fallbackNews();
-      }
-
-      const html = allItems.map(n => `
-        <div class="ticker-item">
-          <div class="news-item ${n.breaking ? 'breaking' : ''}">${n.content}</div>
-        </div>
-      `).join('<span class="separator">•</span>');
-
-      document.getElementById('tickerContent').innerHTML = html;
-    }
-
-    loadTicker();
-    setInterval(loadTicker, 300000); // every 5 mins
-  </script>
-</body>
-</html>
