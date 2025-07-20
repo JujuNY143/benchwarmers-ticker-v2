@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>The Bench Warmers - Live Sports Ticker</title>
+  <title>The Bench Warmers - Live Ticker</title>
   <style>
     body { margin: 0; background: transparent; font-family: Arial, sans-serif; }
 
@@ -52,7 +52,7 @@
       display: flex;
       align-items: center;
       height: 100%;
-      animation: scroll 120s linear infinite;
+      animation: scroll 90s linear infinite;
       padding-left: 20px;
       z-index: 1;
     }
@@ -97,14 +97,23 @@
       <span class="live-sports-text">LIVE SPORTS</span>
     </div>
     <div class="ticker-content" id="tickerContent">
-      <div class="ticker-item"><span>Loading scores + news…</span></div>
+      <div class="ticker-item"><span>Loading live ESPN scores + news...</span></div>
     </div>
   </div>
 
   <script>
+    const leagues = [
+      ['baseball', 'mlb'],
+      ['basketball', 'nba'],
+      ['football', 'nfl'],
+      ['soccer', 'usa.1'],
+      ['football', 'college-football'],
+      ['basketball', 'mens-college-basketball']
+    ];
+
     async function fetchESPNData(sport, league) {
-      const url = `https://site.api.espn.com/apis/site/v2/sports/${sport}/${league}/scoreboard`;
       try {
+        const url = `https://site.api.espn.com/apis/site/v2/sports/${sport}/${league}/scoreboard`;
         const res = await fetch(url);
         return await res.json();
       } catch {
@@ -112,41 +121,59 @@
       }
     }
 
-    function parseGames(data, sportLabel, emoji) {
-      if (!data || !data.events) return [];
+    function parseESPNGames(data, leagueName) {
+      if (!data?.events) return [];
 
       return data.events.map(event => {
-        const comp = event.competitions[0];
-        const teams = comp.competitors;
-
-        const team1 = teams.find(t => t.homeAway === 'away')?.team?.abbreviation || 'TBD';
-        const team2 = teams.find(t => t.homeAway === 'home')?.team?.abbreviation || 'TBD';
-        const score1 = teams.find(t => t.homeAway === 'away')?.score || '';
-        const score2 = teams.find(t => t.homeAway === 'home')?.score || '';
-
-        let status = comp.status?.type?.shortDetail || '';
-        if (comp.status?.type?.completed) status = "FINAL";
+        const teams = event.competitions[0]?.competitors || [];
+        const home = teams.find(t => t.homeAway === 'home');
+        const away = teams.find(t => t.homeAway === 'away');
+        const homeName = home?.team?.abbreviation ?? 'Home';
+        const awayName = away?.team?.abbreviation ?? 'Away';
+        const homeScore = home?.score ?? '';
+        const awayScore = away?.score ?? '';
+        const isLive = event.status?.type?.state === 'in';
+        const isFinal = event.status?.type?.completed;
+        const time = isLive ? 'LIVE' : isFinal ? 'FINAL' : event.date?.slice(11, 16) + ' ET';
 
         return {
           type: 'score',
-          content: `${emoji} ${sportLabel}: ${team1} ${score1} vs ${team2} ${score2} (${status})`
+          content: `${leagueName.toUpperCase()}: ${awayName} ${awayScore} vs ${homeName} ${homeScore} (${time})`
         };
       });
     }
 
-    function fallbackNews() {
+    function getFallbackNews() {
       return [
-        { type: 'news', content: 'The Bench Warmers bring you non-stop sports insights!', breaking: true },
-        { type: 'news', content: 'Live scores from NBA, NFL, MLB, MLS & NCAA', breaking: false },
-        { type: 'news', content: 'Follow us for analysis, odds & updates!' }
+        { type: 'news', content: 'Follow The Bench Warmers for real-time sports coverage!', breaking: true },
+        { type: 'news', content: 'Live ticker powered by ESPN JSON feeds', breaking: false }
       ];
     }
 
     async function loadTicker() {
-      const sports = [
-        { sport: 'basketball', league: 'nba', label: 'NBA', emoji: '🏀' },
-        { sport: 'football', league: 'nfl', label: 'NFL', emoji: '🏈' },
-        { sport: 'baseball', league: 'mlb', label: 'MLB', emoji: '⚾' },
-        { sport: 'soccer', league: 'usa.1', label: 'MLS', emoji: '⚽' },
-        { sport: 'football', l
+      const allItems = [];
 
+      for (const [sport, league] of leagues) {
+        const data = await fetchESPNData(sport, league);
+        if (data) {
+          const parsed = parseESPNGames(data, league);
+          allItems.push(...parsed);
+        }
+      }
+
+      const final = allItems.length ? allItems : getFallbackNews();
+
+      const html = final.map(n => `
+        <div class="ticker-item">
+          <div class="news-item ${n.breaking ? 'breaking' : ''}">${n.content}</div>
+        </div>
+      `).join('<span class="separator">•</span>');
+
+      document.getElementById('tickerContent').innerHTML = html;
+    }
+
+    loadTicker();
+    setInterval(loadTicker, 300000); // every 5 min
+  </script>
+</body>
+</html>
